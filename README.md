@@ -3,7 +3,7 @@
 
 UOX3Atlas is a powerful WinForms-based tool for viewing, editing, and managing `regions.dfn` files for [UOX3](https://www.uox3.org/), the Ultima Online server emulator. It provides a graphical interface to interact with your shard's regions visually—allowing zooming, panning, tag editing, region grouping, and more.
 
-![UOX3Atlas Screenshot](docs/screenshot.png)
+![UOX3Atlas Screenshot](docs/uox3atlas.png)
 
 ---
 
