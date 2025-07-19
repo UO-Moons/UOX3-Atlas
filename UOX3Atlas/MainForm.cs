@@ -154,6 +154,8 @@ namespace UOX3Atlas
             this.Shown += (s, e) => LoadSettings();
 
             PopulateRegionGroupsFromTags();
+            var version = System.Reflection.Assembly.GetExecutingAssembly().GetName().Version.ToString();
+            this.Text = $"UOX3 Atlas v{version}";
         }
 
         private void checkedListBoxRegions_ItemCheck(object sender, ItemCheckEventArgs e)
