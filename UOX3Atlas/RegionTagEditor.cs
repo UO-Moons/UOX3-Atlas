@@ -120,7 +120,7 @@ namespace UOX3Atlas
                 pictureBox1.Invalidate();
             };
 
-            tagEditor.ShowDialog();
+            tagEditor.Show();
         }
 
         private void editTagsMenuItem_Click(object sender, EventArgs e)
@@ -129,6 +129,39 @@ namespace UOX3Atlas
             {
                 var selectedRegion = regions[checkedListBoxRegions.SelectedIndex];
                 ShowRegionEditor(selectedRegion);
+            }
+        }
+
+        private void compareTagsMenuItem_Click(object sender, EventArgs e)
+        {
+            if (checkedListBoxRegions.SelectedIndex >= 0)
+            {
+                var selectedRegion = regions[checkedListBoxRegions.SelectedIndex];
+
+                // Prompt user to choose another region to compare
+                var pickDialog = new Form
+                {
+                    Text = "Select Region to Compare",
+                    Width = 300,
+                    Height = 400
+                };
+
+                ListBox regionListBox = new ListBox { Dock = DockStyle.Fill };
+                regionListBox.Items.AddRange(regions.Where(r => r != selectedRegion).Select(r => r.Name).ToArray());
+                pickDialog.Controls.Add(regionListBox);
+
+                regionListBox.DoubleClick += (s2, e2) =>
+                {
+                    if (regionListBox.SelectedItem != null)
+                    {
+                        var otherRegion = regions.FirstOrDefault(r => r.Name == regionListBox.SelectedItem.ToString());
+                        ShowRegionEditor(selectedRegion);
+                        ShowRegionEditor(otherRegion);
+                        pickDialog.Close();
+                    }
+                };
+
+                pickDialog.ShowDialog();
             }
         }
     }

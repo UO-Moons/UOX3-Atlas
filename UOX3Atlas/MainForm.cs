@@ -31,7 +31,7 @@ namespace UOX3Atlas
         private string lastMapPath;
         private string lastRegionPath;
 
-        private List<Region> undoStack = new List<Region>();
+        private Stack<List<Region>> undoStack = new Stack<List<Region>>();
 
         private class EditorSettings
         {
@@ -92,23 +92,12 @@ namespace UOX3Atlas
 
         private void PushUndo()
         {
-            var copy = new List<Region>();
-            foreach (var r in regions)
-            {
-                var newRegion = new Region
-                {
-                    Name = r.Name,
-                    Visible = r.Visible,
-                    Tags = new Dictionary<string, string>(r.Tags) //Copy tags too!
-                };
 
-                foreach (var b in r.Bounds)
-                    newRegion.Bounds.Add(b);
+            if (regions == null || regions.Count == 0)
+                return;
 
-                copy.Add(newRegion);
-            }
-
-            undoStack = copy;
+            var snapshot = regions.Select(r => r.Clone()).ToList(); // clone each region
+            undoStack.Push(snapshot);
         }
 
 
@@ -125,11 +114,13 @@ namespace UOX3Atlas
 
         private void UndoLastAction()
         {
-            if (undoStack != null && undoStack.Count > 0)
+            if (undoStack.Count > 0)
             {
-                regions = undoStack;
+                regions = undoStack.Pop();
                 selectedRegion = null;
-                pictureBox1.Invalidate();
+                UpdateRegionListUI();           // <- Refresh checkbox list
+                PopulateRegionGroupsFromTags(); // <- Rebuild group panel if used
+                pictureBox1.Invalidate();       // <- Redraw regions
             }
         }
 
@@ -185,13 +176,6 @@ namespace UOX3Atlas
                 }
             }
 
-            for (int i = 0; i < regions.Count; i++)
-            {
-                var region = regions[i];
-                string displayName = $"[{i}] {region.Name}";
-                checkedListBoxRegions.Items.Add(displayName, region.Visible);
-            }
-
             // Measure the longest item
             int maxWidth = 0;
             using (Graphics g = checkedListBoxRegions.CreateGraphics())
@@ -209,6 +193,7 @@ namespace UOX3Atlas
 
             checkedListBoxRegions.EndUpdate();
         }
+
 
 
         private void LoadImage(string filePath)
@@ -402,6 +387,7 @@ namespace UOX3Atlas
 
         private void LoadRegionsFile(string regionFilePath)
         {
+            regions.Clear();
             regions = RegionParser.LoadRegions(regionFilePath);
             pictureBox1.Invalidate();
             UpdateRegionListUI();
@@ -419,11 +405,9 @@ namespace UOX3Atlas
                     lastRegionPath = openDialog.FileName;
                     LoadRegionsFile(lastRegionPath);
                     SaveSettings();
+                    PopulateRegionGroupsFromTags();
                 }
             }
-
-            // Then add:
-            PopulateRegionGroupsFromTags();
         }
 
         private void toggleRegionsToolStripMenuItem_Click(object sender, EventArgs e)
@@ -727,6 +711,7 @@ namespace UOX3Atlas
                 PushUndo(); // Save state before removal
                 regions.Remove(selectedRegion);
                 selectedRegion = null;
+                UpdateRegionListUI(); // This ensures list box syncs with updated regions
                 pictureBox1.Invalidate();
             }
         }

@@ -29,6 +29,7 @@ namespace UOX3Atlas
 
         private ContextMenuStrip regionContextMenu;
         private ToolStripMenuItem editTagsMenuItem;
+        private ToolStripMenuItem compareTagsMenuItem;
 
         private ComboBox comboBoxRegionGroups;
 
@@ -153,10 +154,12 @@ namespace UOX3Atlas
             this.panelRegionSidebar.BackColor = Color.WhiteSmoke;
 
             regionContextMenu = new ContextMenuStrip();
-            editTagsMenuItem = new ToolStripMenuItem("Edit Tags");
-            editTagsMenuItem.Click += editTagsMenuItem_Click;
 
-            regionContextMenu.Items.Add(editTagsMenuItem);
+            editTagsMenuItem = new ToolStripMenuItem("Edit Tags", null, editTagsMenuItem_Click);
+            compareTagsMenuItem = new ToolStripMenuItem("Compare With...", null, compareTagsMenuItem_Click);
+
+            regionContextMenu.Items.AddRange(new ToolStripItem[] { editTagsMenuItem, compareTagsMenuItem });
+
             checkedListBoxRegions.ContextMenuStrip = regionContextMenu;
             checkedListBoxRegions.MouseDown += checkedListBoxRegions_MouseDown;
 
