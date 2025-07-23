@@ -216,7 +216,7 @@ namespace UOX3Atlas
             this.Controls.Add(this.mainLayout);
             this.MainMenuStrip = this.menuStrip1;
             this.Name = "MainForm";
-            this.Text = "UOX3 Atlas v0.1.0.Alpha";
+            this.Text = "UOX3 Atlas v0.2.0.Alpha";
 
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox1)).EndInit();
             this.menuStrip1.ResumeLayout(false);
