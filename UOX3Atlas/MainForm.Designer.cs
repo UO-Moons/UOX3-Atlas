@@ -31,7 +31,11 @@ namespace UOX3Atlas
         private ToolStripMenuItem editTagsMenuItem;
         private ToolStripMenuItem compareTagsMenuItem;
 
+
         private ComboBox comboBoxRegionGroups;
+
+        private ComboBox comboWorldFilter;
+        private ComboBox comboBoxWorlds;
 
         protected override void Dispose(bool disposing)
         {
@@ -138,6 +142,28 @@ namespace UOX3Atlas
             regionGroupHost.Margin = new Padding(10, 0, 0, 0); // Space it nicely
 
             this.toolStrip1.Items.Add(regionGroupHost);
+
+            this.comboWorldFilter = new ComboBox();
+            this.comboWorldFilter.DropDownStyle = ComboBoxStyle.DropDownList;
+            this.comboWorldFilter.Width = 100;
+            this.comboWorldFilter.SelectedIndexChanged += new EventHandler(this.comboWorldFilter_SelectedIndexChanged);
+
+            ToolStripControlHost worldHost = new ToolStripControlHost(this.comboWorldFilter);
+            worldHost.Margin = new Padding(10, 0, 0, 0); // small spacing between region group and world
+
+            this.toolStrip1.Items.Add(worldHost);
+
+            // World Selector ComboBox
+            comboBoxWorlds = new ComboBox();
+            comboBoxWorlds.DropDownStyle = ComboBoxStyle.DropDownList;
+            comboBoxWorlds.Width = 100;
+            comboBoxWorlds.SelectedIndexChanged += new EventHandler(comboBoxWorlds_SelectedIndexChanged);
+
+            ToolStripControlHost worldSelectorHost = new ToolStripControlHost(comboBoxWorlds);
+            worldSelectorHost.Margin = new Padding(10, 0, 0, 0);
+
+            // Add to toolbar (before or after region group dropdown as you prefer)
+            this.toolStrip1.Items.Add(worldSelectorHost);
 
             // panelRegionSidebar
             this.txtRegionSearch.Dock = DockStyle.Top;

@@ -5,7 +5,7 @@ using System.Text.RegularExpressions;
 
 public static class RegionParser
 {
-    public static List<Region> LoadRegions(string filePath)
+    /*public static List<Region> LoadRegions(string filePath)
     {
         var regions = new List<Region>();
         var lines = File.ReadAllLines(filePath);
@@ -76,5 +76,82 @@ public static class RegionParser
             regions.Add(currentRegion);
 
         return regions;
+    }*/
+    public static List<Region> LoadRegions(string filePath, int worldFilter = 0)
+    {
+        var regions = new List<Region>();
+        var lines = File.ReadAllLines(filePath);
+
+        Region currentRegion = null;
+        int? world = null;
+        int x1 = 0, y1 = 0, x2 = 0, y2 = 0;
+
+        foreach (var rawLine in lines)
+        {
+            var line = rawLine.Trim();
+
+            if (line.StartsWith("[REGION"))
+            {
+                // Save previous region
+                if (currentRegion != null)
+                {
+                    if ((worldFilter == 0 && (world == null || world == 0)) || (worldFilter != 0 && world == worldFilter))
+                        regions.Add(currentRegion);
+                }
+
+                currentRegion = new Region();
+                world = null;
+            }
+            else if (currentRegion != null && line.Contains("="))
+            {
+                var parts = line.Split('=');
+                if (parts.Length != 2)
+                    continue;
+
+                var key = parts[0].Trim().ToUpper();
+                var value = parts[1].Trim();
+
+                switch (key)
+                {
+                    case "NAME":
+                        currentRegion.Name = value;
+                        break;
+                    case "X1":
+                        x1 = int.Parse(value);
+                        break;
+                    case "Y1":
+                        y1 = int.Parse(value);
+                        break;
+                    case "X2":
+                        x2 = int.Parse(value);
+                        break;
+                    case "Y2":
+                        y2 = int.Parse(value);
+                        currentRegion.Bounds.Add(Rectangle.FromLTRB(x1, y1, x2, y2));
+                        break;
+                    case "WORLD":
+                        if (int.TryParse(value, out int parsedWorld))
+                        {
+                            world = parsedWorld;
+                            currentRegion.World = parsedWorld; // ← set it here
+                        }
+                        break;
+                        break;
+                    default:
+                        currentRegion.Tags[key] = value;
+                        break;
+                }
+            }
+        }
+
+        // Last region
+        if (currentRegion != null)
+        {
+            if ((worldFilter == 0 && (world == null || world == 0)) || (worldFilter != 0 && world == worldFilter))
+                regions.Add(currentRegion);
+        }
+
+        return regions;
     }
+
 }

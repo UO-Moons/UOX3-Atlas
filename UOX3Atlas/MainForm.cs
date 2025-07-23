@@ -14,11 +14,8 @@ namespace UOX3Atlas
         private float zoomFactor = 1.0f;
         private List<Region> regions = new List<Region>();
         private bool showRegions = true;
-        private Point imageDrawLocation = Point.Empty;
-        private float imageDrawScale = 1.0f;
         private Point panOffset = new Point(0, 0);
         private Point mouseDownPos;
-        private bool isDragging = false;
         private Region selectedRegion = null;
         private Rectangle selectedRect;
         private Point regionDragStart;
@@ -28,14 +25,13 @@ namespace UOX3Atlas
         private enum ResizeHandle { None, TopLeft, TopRight, BottomLeft, BottomRight }
         private ResizeHandle activeHandle = ResizeHandle.None;
         private bool isResizing = false;
-        private string lastMapPath;
         private string lastRegionPath;
-
+        private Dictionary<int, string> worldMapPaths = new Dictionary<int, string>();
         private Stack<List<Region>> undoStack = new Stack<List<Region>>();
 
         private class EditorSettings
         {
-            public string MapPath { get; set; }
+            public Dictionary<int, string> MapPaths { get; set; } = new Dictionary<int, string>();
             public string RegionPath { get; set; }
             public List<string> HiddenRegions { get; set; } = new List<string>();
         }
@@ -46,12 +42,12 @@ namespace UOX3Atlas
         {
             var settings = new EditorSettings
             {
-                MapPath = lastMapPath,
+                MapPaths = worldMapPaths, // save ALL map paths
                 RegionPath = lastRegionPath,
                 HiddenRegions = regions.Where(r => !r.Visible).Select(r => r.Name).ToList()
             };
 
-            string json = Newtonsoft.Json.JsonConvert.SerializeObject(settings, Newtonsoft.Json.Formatting.Indented);
+            string json = JsonConvert.SerializeObject(settings, Formatting.Indented);
             File.WriteAllText(settingsPath, json);
         }
 
@@ -65,22 +61,49 @@ namespace UOX3Atlas
                 string json = File.ReadAllText(settingsPath);
                 var settings = JsonConvert.DeserializeObject<EditorSettings>(json);
 
-                if (!string.IsNullOrEmpty(settings.MapPath) && File.Exists(settings.MapPath))
+                // Load all saved maps
+                if (settings.MapPaths != null)
                 {
-                    lastMapPath = settings.MapPath; // <-- Important!
-                    LoadImage(lastMapPath);
+                    foreach (var kvp in settings.MapPaths)
+                    {
+                        int worldNum = kvp.Key;
+                        string path = kvp.Value;
+
+                        if (File.Exists(path))
+                        {
+                            Image mapImage = Image.FromFile(path);
+                            worldMaps[worldNum] = mapImage;
+                            worldMapPaths[worldNum] = path; // save back into local tracking
+                        }
+                    }
+
+                    // Set initial map
+                    if (worldMaps.Count > 0)
+                    {
+                        currentWorld = worldMaps.Keys.Min();
+                        pictureBox1.Image = worldMaps[currentWorld];
+
+                        comboBoxWorlds.Items.Clear();
+                        foreach (var world in worldMaps.Keys.OrderBy(k => k))
+                            comboBoxWorlds.Items.Add($"World {world}");
+
+                        comboBoxWorlds.SelectedItem = $"World {currentWorld}";
+                    }
                 }
 
+                // Load regions
                 if (!string.IsNullOrEmpty(settings.RegionPath) && File.Exists(settings.RegionPath))
                 {
-                    lastRegionPath = settings.RegionPath; // <-- Important!
+                    lastRegionPath = settings.RegionPath;
                     LoadRegionsFile(lastRegionPath);
                 }
 
+                // Restore hidden regions
                 if (settings.HiddenRegions != null)
                 {
                     foreach (var region in regions)
                         region.Visible = !settings.HiddenRegions.Contains(region.Name);
+
                     UpdateRegionListUI();
                 }
             }
@@ -89,6 +112,7 @@ namespace UOX3Atlas
                 MessageBox.Show("Failed to load settings:\n" + ex.Message, "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
+
 
         private void PushUndo()
         {
@@ -214,6 +238,10 @@ namespace UOX3Atlas
 
         private void pictureBox1_Paint(object sender, PaintEventArgs e)
         {
+            if (!worldMaps.ContainsKey(currentWorld))
+                return;
+
+            originalImage = worldMaps[currentWorld] as Bitmap;
             if (originalImage == null)
                 return;
 
@@ -313,19 +341,91 @@ namespace UOX3Atlas
             e.Graphics.Transform = originalTransform;
         }
 
+        private readonly Dictionary<int, string> worldNameMap = new()
+        {
+            { 0, "Felucca" },
+            { 1, "Trammel" },
+            { 2, "Ilshenar" },
+            { 3, "Malas" },
+            { 4, "Tokuno" },
+            { 5, "Ter Mur" }
+        };
+    
+        private class WorldItem
+        {
+            public int ID { get; set; }
+            public string Name { get; set; }
+            public override string ToString() => Name;
+        }
+
+        private Dictionary<int, Image> worldMaps = new Dictionary<int, Image>();
+        private int currentWorld = 0;
+
         private void openToolStripMenuItem_Click(object sender, EventArgs e)
         {
             using (OpenFileDialog openDialog = new OpenFileDialog
             {
-                Filter = "Image Files|*.jpg;*.jpeg;*.png;*.bmp;*.gif"
+                Filter = "Map Images|*.bmp;*.png;*.jpg",
+                Title = "Load Map Image"
             })
             {
                 if (openDialog.ShowDialog() == DialogResult.OK)
                 {
-                    lastMapPath = openDialog.FileName;
-                    LoadImage(lastMapPath);
-                    SaveSettings();
+                    string filePath = openDialog.FileName;
+
+                    // Ask for world number
+                    string input = Microsoft.VisualBasic.Interaction.InputBox(
+                        "Enter world number for this map (e.g., 0, 1, 2):",
+                        "Assign World");
+
+                    if (int.TryParse(input, out int worldNum))
+                    {
+                        Image mapImage = Image.FromFile(filePath);
+                        worldMaps[worldNum] = mapImage;
+                        worldMapPaths[worldNum] = filePath;
+
+                        // Auto switch if this is the first or current world
+                        if (currentWorld == worldNum || !worldMaps.ContainsKey(currentWorld))
+                        {
+                            currentWorld = worldNum;
+                            UpdateRegionListUI();
+                            pictureBox1.Invalidate(); //This forces a repaint
+                        }
+
+                        // Update world dropdown
+                        if (!comboBoxWorlds.Items.Contains($"World {worldNum}"))
+                        {
+                            string name = worldNameMap.ContainsKey(worldNum) ? worldNameMap[worldNum] : $"World {worldNum}";
+
+                            bool alreadyExists = comboBoxWorlds.Items
+                                .OfType<WorldItem>()
+                                .Any(i => i.ID == worldNum);
+
+                            if (!alreadyExists)
+                            {
+                                comboBoxWorlds.Items.Add(new WorldItem { ID = worldNum, Name = name });
+                            }
+
+                            // Set selection after adding
+                            comboBoxWorlds.SelectedItem = comboBoxWorlds.Items
+                                .OfType<WorldItem>()
+                                .FirstOrDefault(i => i.ID == worldNum);
+                        }
+                        SaveSettings();
+                    }
                 }
+            }
+        }
+
+        private void comboBoxWorlds_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            if (comboBoxWorlds.SelectedItem is WorldItem selected &&
+                worldMaps.TryGetValue(selected.ID, out var image))
+            {
+                currentWorld = selected.ID;
+                originalImage = image as Bitmap;
+                UpdateRegionListUI();
+                pictureBox1.Invalidate();
             }
         }
 
@@ -387,8 +487,16 @@ namespace UOX3Atlas
 
         private void LoadRegionsFile(string regionFilePath)
         {
+            int selectedWorld = 0;
             regions.Clear();
-            regions = RegionParser.LoadRegions(regionFilePath);
+            if (comboWorldFilter?.SelectedItem is string selectedText &&
+                selectedText.StartsWith("World") &&
+                int.TryParse(selectedText.Split(' ')[1], out int parsed))
+            {
+                selectedWorld = parsed;
+            }
+
+            regions = RegionParser.LoadRegions(regionFilePath, selectedWorld);
             pictureBox1.Invalidate();
             UpdateRegionListUI();
         }
@@ -403,11 +511,39 @@ namespace UOX3Atlas
                 if (openDialog.ShowDialog() == DialogResult.OK)
                 {
                     lastRegionPath = openDialog.FileName;
+                    // Populate world dropdown
+                    PopulateWorldFilter(lastRegionPath);
+
+                    // Load regions for current selection
                     LoadRegionsFile(lastRegionPath);
                     SaveSettings();
                     PopulateRegionGroupsFromTags();
                 }
             }
+        }
+
+        private void PopulateWorldFilter(string filePath)
+        {
+            HashSet<int> worlds = new HashSet<int> { 0 }; // Always include 0 for [no tag or 0]
+
+            var lines = File.ReadAllLines(filePath);
+            foreach (var line in lines)
+            {
+                if (line.Trim().StartsWith("WORLD=", StringComparison.OrdinalIgnoreCase))
+                {
+                    var parts = line.Split('=');
+                    if (parts.Length == 2 && int.TryParse(parts[1].Trim(), out int world))
+                        worlds.Add(world);
+                }
+            }
+
+            var sortedWorlds = worlds.OrderBy(w => w).ToList();
+
+            comboWorldFilter.Items.Clear();
+            foreach (var w in sortedWorlds)
+                comboWorldFilter.Items.Add($"World {w}");
+
+            comboWorldFilter.SelectedIndex = 0; // Default to World 0
         }
 
         private void toggleRegionsToolStripMenuItem_Click(object sender, EventArgs e)
@@ -753,14 +889,16 @@ namespace UOX3Atlas
 
                 foreach (var region in regions)
                 {
+                    if (string.IsNullOrWhiteSpace(region.Name))
+                        continue; // Skip unnamed regions entirely
+
                     writer.WriteLine($"[REGION {regionIndex}]");
                     writer.WriteLine("{");
 
-                    // Only write NAME if it originally existed
-                    if (region.Tags.ContainsKey("NAME"))
-                        writer.WriteLine($"NAME={region.Name}");
+                    // Always write the name from region.Name
+                    writer.WriteLine($"NAME={region.Name}");
 
-                    // Write preserved tags (except X1/Y1/X2/Y2)
+                    // Write preserved tags (except bounds and name)
                     foreach (var tag in region.Tags)
                     {
                         string tagKey = tag.Key.ToUpper();
@@ -770,7 +908,7 @@ namespace UOX3Atlas
                         }
                     }
 
-                    // Write updated bounds
+                    // Write all region bounds
                     foreach (var rect in region.Bounds)
                     {
                         writer.WriteLine($"X1={rect.Left}");
@@ -822,6 +960,14 @@ namespace UOX3Atlas
         private void txtRegionSearch_TextChanged(object sender, EventArgs e)
         {
             UpdateRegionListUI();
+        }
+
+        private void comboWorldFilter_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            if (string.IsNullOrWhiteSpace(lastRegionPath))
+                return;
+
+            LoadRegionsFile(lastRegionPath); // reloads and respects new world filter
         }
 
         private void helpToolStripMenuItem_Click(object sender, EventArgs e)
