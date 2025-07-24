@@ -15,25 +15,19 @@ namespace UOX3Atlas
         private ToolStripMenuItem toggleRegionsToolStripMenuItem;
         private ToolStripMenuItem saveRegionsToolStripMenuItem;
         private ToolStripMenuItem helpToolStripMenuItem;
-
         private ToolStrip toolStrip1;
         private ToolStripButton zoomInToolStripButton;
         private ToolStripButton zoomOutToolStripButton;
         private ToolStripLabel zoomLabel;
         private ToolStripComboBox zoomComboBox;
-
         private CheckedListBox checkedListBoxRegions;
         private TextBox txtRegionSearch;
         private Panel panelRegionSidebar;
         private TableLayoutPanel mainLayout;
-
         private ContextMenuStrip regionContextMenu;
         private ToolStripMenuItem editTagsMenuItem;
         private ToolStripMenuItem compareTagsMenuItem;
-
-
         private ComboBox comboBoxRegionGroups;
-
         private ComboBox comboWorldFilter;
         private ComboBox comboBoxWorlds;
 
@@ -164,7 +158,6 @@ namespace UOX3Atlas
 
             // Add to toolbar (before or after region group dropdown as you prefer)
             this.toolStrip1.Items.Add(worldSelectorHost);
-
             // panelRegionSidebar
             this.txtRegionSearch.Dock = DockStyle.Top;
             this.txtRegionSearch.PlaceholderText = "Search regions...";
